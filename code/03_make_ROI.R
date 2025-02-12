@@ -42,7 +42,7 @@ photo_exif <- read_csv(glue("{exif_path}/pheno_exif_{site_id}_{photo_date_dir}.c
 # Select Photo for Drawing ROI -------------------------------------------------------
 
 # get a test image, change number for different image
-img <- terra::rast(glue("{photo_directory}/{photo_exif$pheno_name[1194]}"))
+img <- terra::rast(glue("{photo_directory}/{photo_exif$pheno_name[11]}"))
 
 # flip?
 img <- terra::flip(img)
