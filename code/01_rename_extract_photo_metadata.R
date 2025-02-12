@@ -29,16 +29,9 @@ library(digest) # for unique hash ID
 ## make sure the version number matches what you have
 ## (different versions should still work, just need the correct one below for the path to work)
 
-## SET CDFW PATHS
-## if using another OS (Mac or Linux), your path is different
-
 ## These don't need to be changed, they are set automagically and work on windows
 username <- Sys.getenv("USERNAME")
 drive <- r'(C:\Users\)'
-
-## These may need to be changed!
-## Verify your OneDrive path and change as needed:
-onedrive <- r'(OneDrive - California Department of Fish and Wildlife\)'
 
 ##  if you put in Downloads, this should work as long as you update version
 path_to_exif_zip <- glue("{drive}/{username}/Downloads/exiftool-12.99_64.zip")
@@ -52,7 +45,7 @@ if(fs::file_exists(path_to_exif_zip)=="TRUE") {
 ## 4. Now we can test and install
 
 ## this only needs to be done once!
-install_exiftool(local_exiftool = path_to_exif_zip)
+# install_exiftool(local_exiftool = path_to_exif_zip)
 
 ## Check EXIF works: should get "Using ExifTool version XX.XX" and the version
 
@@ -64,14 +57,25 @@ exif_version()
 site_id <- "COLE1" # Site ID (avoid spaces and special characters)
 
 # Full path to folder where photos are located
-# this function helps select the folder and ensures there are images in the folder to use
+# this function helps select the folder
+# and ensures there are images in the folder to process
 select_dir <- function(){
   print("Select any image file WITHIN the folder you want to use:")
   dirname(file.choose(new = FALSE))
 }
 
+# select ANY IMAGE from the folder you want to process photos
 photo_directory <- select_dir()
 photo_directory # double check this is correct!
+
+# TYPICALLY THE CODE IS SET UP TO RECOGNIZE FOLDER STRUCTURES AS FOLLOWS
+# DIRECTORIES ARE IN ALL CAPS, filenames are lowercase
+
+## TIMELAPSE PROJECT
+    ## ----> SITE_ID
+        ## ----> YYYYMMDD
+            ## ----> photo_filename_0001.jpg
+            ## ----> photo_filename_0002.jpg
 
 # Get Photo File List -----------------------------------------------------
 
@@ -114,8 +118,9 @@ system.time(
       mutate(
         full_path = glue("{file_path}/{file_name}"),
         datetime = ymd_hms(datetime),
-        # add pheno_name
+        # add unique pheno_name for image naming
         pheno_name = glue("{site_id}_{format(as_date(datetime), '%Y_%m_%d')}_{gsub(':', '', hms::as_hms(datetime))}.{path_ext(file_name)}"),
+        # this also adds unique hash ID for imagery where there may be duplicates
         hashid = map_vec(full_path, ~digest::digest(.x, algo="crc32", serialize=FALSE)),
         pheno_name_uniq = glue("{site_id}_{format(as_date(datetime), '%Y_%m_%d')}_{gsub(':', '', hms::as_hms(datetime))}_{hashid}.{path_ext(file_name)}"))
   } else("No exiftools installed...")
@@ -135,14 +140,18 @@ last_date <- last(format(as_date(photo_attribs$datetime), '%Y%m%d'))
 # write out metadata
 write_csv(photo_attribs, glue("{metadata_path}/pheno_exif_{site_id}_{last_date}.csv.gz"))
 
-
 # Rename Photos in Place -----------------------------------------
 
-# For 15 min or greater photo intervals we can rename in place as long as photos are unique
+# For 15 min or greater photo intervals we can rename in place
+# as long as photo names are unique!
 # this code checks to see all photo names are unique using only datetime stamp
 # if not, it appends a unique random hash code to the site_date_time
 
-if(photo_list |> filter(grepl("^RCNX", file_name)) |> tally() |> nrow()==0){
+# CAMERA DEFAULT NAME
+# Change if your default model name is different (i.e., "IMG" or "MOULTRIE")
+cam_default_img_name <- "RCNX"
+
+if(photo_list |> filter(grepl(glue("^{cam_default_img_name}"), file_name)) |> tally() |> nrow()==0){
   print("Already renamed, no renaming required. Done!")
 } else if(photo_attribs |> group_by(pheno_name) |> tally() |> filter(n>1) |> nrow()==0){
   print("No duplicates, using simple phenoname: site_date_time")
