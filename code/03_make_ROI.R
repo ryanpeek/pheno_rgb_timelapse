@@ -75,9 +75,9 @@ RGB(img) <- 1:3
 # WA water
 
 # Create NEW mask type and number
-## First number is for photo set (if photos shift and need a new version)
-## second number is iterative to photo set and type
-mask_type <-"WA_01_02"
+## First number is for photo set (specific to download batch)
+## second number is iterative to type (if multiple ROI of type: SH created)
+mask_type <-"WA_01_01"
 
 # draw a polygon function
 drawPolygon <- function (col = "#80303080", lty = 1, ...)
@@ -97,7 +97,7 @@ drawPolygon <- function (col = "#80303080", lty = 1, ...)
   invisible(xy)
 }
 
-## one click creates a net that starts the drawing, hit escape to save
+## one click creates a net that starts the drawing, HIT ESCAPE WHEN DONE TO SAVE!
 x <- drawPolygon()
 x_poly <- terra::vect(cbind(x$x, x$y), "polygons")
 plot(x_poly, col=alpha("yellow", 0.6), add=TRUE)
@@ -122,12 +122,12 @@ terra::writeRaster(r, filename = glue("ROI/{site_id}_{mask_type}.tif"), overwrit
 # make sure to save and write out (only once)
 png(filename = glue("{exif_path}/ROI/{site_id}_{mask_type}_roi_masked.png"), bg = "transparent")
 plotRGB(img)
-plot(r, col=c(NA, alpha("yellow",0.8)), legend=FALSE, axes=FALSE, add=TRUE)
+plot(r, col=c(alpha("white", 0), alpha("yellow",0.8)), legend=FALSE, axes=FALSE, add=TRUE)
 dev.off()
 
 png(filename = glue("ROI/{site_id}_{mask_type}_roi_masked.png"), bg = "transparent")
 plotRGB(img)
-plot(r, col=c(NA, alpha("yellow",0.8)), legend=FALSE, axes=FALSE, add=TRUE)
+plot(r, col=c(alpha("white",0), alpha("yellow",0.8)), legend=FALSE, axes=FALSE, add=TRUE)
 dev.off()
 
 # Quick Check -------------------------------------------------------------
