@@ -30,17 +30,17 @@ library(digest) # for unique hash ID
 ## (different versions should still work, just need the correct one below for the path to work)
 
 ## These don't need to be changed, they are set automagically and work on windows
-username <- Sys.getenv("USERNAME")
-drive <- r'(C:\Users\)'
+#username <- Sys.getenv("USERNAME")
+#drive <- r'(C:\Users\)'
 
 ##  if you put in Downloads, this should work as long as you update version
-path_to_exif_zip <- glue("{drive}/{username}/Downloads/exiftool-12.99_64.zip")
+#path_to_exif_zip <- glue("{drive}/{username}/Downloads/exiftool-12.99_64.zip")
 
 ## 3. Check path works!
 
-if(fs::file_exists(path_to_exif_zip)=="TRUE") {
-  print("Path is legit!")
-} else( "Path is borked...double check")
+# if(fs::file_exists(path_to_exif_zip)=="TRUE") {
+#   print("Path is legit!")
+# } else( "Path is borked...double check")
 
 ## 4. Now we can test and install
 
@@ -49,12 +49,12 @@ if(fs::file_exists(path_to_exif_zip)=="TRUE") {
 
 ## Check EXIF works: should get "Using ExifTool version XX.XX" and the version
 
-exif_version()
+#exif_version()
 
 # Set Paths ---------------------------------------------------------------
 
 # CHANGE/CHECK THESE!
-site_id <- "COLE1" # Site ID (avoid spaces and special characters)
+site_id <- "CampCreek_C04" # Site ID (avoid spaces and special characters)
 
 # Full path to folder where photos are located
 # this function helps select the folder
@@ -89,13 +89,9 @@ photo_list <- photo_list |> filter(!fs::path_ext(path)=="AVI")
 photo_list <- photo_list |>
   mutate(
     file_name = fs::path_file(path),
-    full_path = path,
-    datetime_fs = ymd_hms(modification_time)) |>
-  relocate(c(file_name, full_path, datetime_fs), .before="path") |>
+    full_path = path) |>
+  relocate(c(file_name, full_path), .before="path") |>
   select(-path)
-
-# make sure all unique! (should be zero)
-photo_list |> group_by(datetime_fs) |> tally() |> filter(n>1) |> nrow()
 
 # Get Photo METADATA  -------------------------------------------------
 
@@ -136,7 +132,7 @@ photo_attribs |> group_by(pheno_name) |> tally() |> filter(n>1) |> nrow()
 metadata_path <- fs::path_dir(photo_directory)
 photo_attribs <- photo_attribs |> arrange(datetime) |>
   filter(!is.na(datetime))
-last_date <- last(format(as_date(photo_attribs$datetime), '%Y%m%d'))
+(last_date <- last(format(as_date(photo_attribs$datetime), '%Y%m%d')))
 
 # write out metadata
 write_csv(photo_attribs, glue("{metadata_path}/pheno_exif_{site_id}_{last_date}.csv.gz"))
