@@ -134,7 +134,8 @@ photo_attribs |> group_by(pheno_name) |> tally() |> filter(n>1) |> nrow()
 
 # create path to drive location:
 metadata_path <- fs::path_dir(photo_directory)
-photo_attribs <- photo_attribs |> arrange(datetime)
+photo_attribs <- photo_attribs |> arrange(datetime) |>
+  filter(!is.na(datetime))
 last_date <- last(format(as_date(photo_attribs$datetime), '%Y%m%d'))
 
 # write out metadata
