@@ -106,19 +106,21 @@ system.time(
       janitor::clean_names() |>
       select(any_of(c("directory", "file_name", "file_number",
                       "create_date", "exposure_time", "moon_phase",
-                      "ambient_temperature", "ambient_infrared", "ambient_light",
+                      "ambient_temperature", "ambient_temperature_fahrenheit",
+                      "ambient_infrared", "ambient_light",
                       "serial_number", "image_size", "image_width", "image_height",
-                      "battery_voltage_avg"))) |>
+                      "battery_voltage_avg","battery_voltage_avg"))) |>
       rename(file_path=directory, datetime = create_date, exposure=exposure_time,
              ambient_temp_C=ambient_temperature) |>
       mutate(
+        file_folder = glue("{path_file(file_path)}"),
         full_path = glue("{file_path}/{file_name}"),
         datetime = ymd_hms(datetime),
-        # add unique pheno_name for image naming
+        # add pheno_name
         pheno_name = glue("{site_id}_{format(as_date(datetime), '%Y_%m_%d')}_{gsub(':', '', hms::as_hms(datetime))}.{path_ext(file_name)}"),
-        # this also adds unique hash ID for imagery where there may be duplicates
         hashid = map_vec(full_path, ~digest::digest(.x, algo="crc32", serialize=FALSE)),
-        pheno_name_uniq = glue("{site_id}_{format(as_date(datetime), '%Y_%m_%d')}_{gsub(':', '', hms::as_hms(datetime))}_{hashid}.{path_ext(file_name)}"))
+        pheno_name_uniq = glue("{site_id}_{format(as_date(datetime), '%Y_%m_%d')}_{gsub(':', '', hms::as_hms(datetime))}_{hashid}.{path_ext(file_name)}"),
+        rel_path = glue("TIMELAPSE/{path_file(path_dir(photo_directory))}/{path_file(photo_directory)}/{file_folder}/{pheno_name}"))
   } else("No exiftools installed...")
 )
 
@@ -132,10 +134,11 @@ photo_attribs |> group_by(pheno_name) |> tally() |> filter(n>1) |> nrow()
 metadata_path <- fs::path_dir(photo_directory)
 photo_attribs <- photo_attribs |> arrange(datetime) |>
   filter(!is.na(datetime))
-(last_date <- last(format(as_date(photo_attribs$datetime), '%Y%m%d')))
+last_date_file <- last(format(as_date(photo_attribs$datetime), '%Y%m%d'))
+last_date_dir <- path_file(photo_directory)
 
 # write out metadata
-write_csv(photo_attribs, glue("{metadata_path}/pheno_exif_{site_id}_{last_date}.csv.gz"))
+write_csv(photo_attribs, glue("{metadata_path}/pheno_exif_{site_id}_{last_date_dir}.csv.gz"))
 
 # Rename Photos in Place -----------------------------------------
 
