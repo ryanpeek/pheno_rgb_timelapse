@@ -14,7 +14,7 @@ library(beepr) # to know when things are done
 
 # Set Parameters ----------------------------------------------------------
 
-site_id <- "TWA3" # location
+site_id <- "COLE1" # location
 
 # Full path to folder where photos are located
 # this function helps select the folder and ensures there are images in the folder to use
@@ -72,8 +72,8 @@ beepr::beep()
 
 fs::dir_create(glue("{exif_path}/videos"))
 
-# makes a high quality video
-image_write_video(image = photo_stack, path = glue("{exif_path}/videos/{site_id}_{photo_date_dir}_video.mp4"), framerate =  12)
+# makes a high quality video (try framerate 12, 20, or 30)
+image_write_video(image = photo_stack, path = glue("{exif_path}/videos/{site_id}_{photo_date_dir}_video_20.mp4"), framerate =  20)
 
 ## Save to GIF --------------------------------------------------------------
 

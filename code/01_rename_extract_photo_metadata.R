@@ -54,7 +54,7 @@ library(digest) # for unique hash ID
 # Set Paths ---------------------------------------------------------------
 
 # CHANGE/CHECK THESE!
-site_id <- "CampCreek_C04" # Site ID (avoid spaces and special characters)
+site_id <- "COLE1" # Site ID (avoid spaces and special characters)
 
 # Full path to folder where photos are located
 # this function helps select the folder
