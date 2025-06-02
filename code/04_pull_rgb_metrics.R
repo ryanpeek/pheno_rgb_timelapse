@@ -30,8 +30,15 @@ photo_directory
 photo_date_dir <- basename(photo_directory)
 exif_path <- fs::path_dir(photo_directory)
 
-# read in the exif metadata (run via 02_extract_metadata)
-photo_exif <- read_csv(glue("{exif_path}/pheno_exif_{site_id}_{photo_date_dir}.csv.gz"))
+
+# read in the "complete" option if it exists for exif metadata
+if(file_exists(glue("{exif_path}/pheno_exif_{site_id}_complete.csv.gz"))){
+  print("Using 'complete' list of photos")
+  photo_exif <- read_csv(glue("{exif_path}/pheno_exif_{site_id}_complete.csv.gz"))
+} else({
+  print("Using local photo directory")
+  photo_exif <- read_csv(glue("{exif_path}/pheno_exif_{site_id}_{photo_date_dir}.csv.gz"))
+})
 
 # Get Mask ----------------------------------------------------------------
 
@@ -39,7 +46,10 @@ photo_exif <- read_csv(glue("{exif_path}/pheno_exif_{site_id}_{photo_date_dir}.c
 # if a new photo set, use DB_02_01
 # if same photo set but new polygon of same veg type, use DB_01_02
 
-mask_type <-"GR_01_01"
+# what masks exist?
+fs::dir_ls(path = glue("{exif_path}/ROI/"), regexp = "*.tif")
+
+mask_type <-"DB_01_01"
 
 # read in mask
 pheno_mask <- terra::rast(glue("{exif_path}/ROI/{site_id}_{mask_type}.tif"))
@@ -47,7 +57,7 @@ pheno_mask <- terra::rast(glue("{exif_path}/ROI/{site_id}_{mask_type}.tif"))
 ## TEST PLOTS --------------------------------------------------------------
 
 # test a single photo
-img <- terra::rast(glue("{photo_directory}/{photo_exif$pheno_name[50]}"))
+img <- terra::rast(glue("{photo_exif$file_path[70]}/{photo_exif$pheno_name[70]}"))
 
 # plot to make sure mask is in the appropriate place...if not, need to redraw
 #plotRGB(img)
@@ -135,28 +145,33 @@ ph_make_CCC_ts <- function(photolist, pheno_mask){
 ## Apply Functions ---------------------------------------------------------
 
 # extract all # TAKES A WHILE!!!
-system.time(df <- ph_make_CCC_ts(glue("{photo_directory}/{photo_exif_noon$pheno_name}"), pheno_mask))
+system.time(df <- ph_make_CCC_ts(glue("{photo_exif_noon$file_path}/{photo_exif_noon$pheno_name}"), pheno_mask))
+
 beepr::beep()
 
 # add datetime back for easier stitching
 df2 <- df |> rename(pheno_name=file_name) |>
   left_join(photo_exif_noon, by= "pheno_name") |>
   #select(pheno_name, file_name:ambient_temperature, red:exG)
-  select(pheno_name, file_name:ambient_temp_C, red:exG)
+  select(pheno_name, file_name:battery_voltage_avg, red:exG)
 
 # Save Out ----------------------------------------------------------------
 
 # write out zipped versions to save space
-write_csv(df2, file = glue("{exif_path}/pheno_metrics_{site_id}_{mask_type}_{photo_date_dir}_midday.csv.gz"))
+#write_csv(df2, file = glue("{exif_path}/pheno_metrics_{site_id}_{mask_type}_{photo_date_dir}_midday.csv.gz"))
+
+# write complete version:
+write_csv(df2, file = glue("{exif_path}/pheno_metrics_{site_id}_{mask_type}_midday_complete.csv.gz"))
 
 ## Read in and Combine Series  ----------------------------------------------------------------
 
 #mask_type <- "GR_01_02" # only if different
 
 # read in series matching mask:
-(pheno_files <- fs::dir_ls(glue("{exif_path}"),regexp = glue("{mask_type}")))
+#(pheno_files <- fs::dir_ls(glue("{exif_path}"),regexp = glue("{mask_type}")))
+#(pheno_files <- fs::dir_ls(glue("{exif_path}"),regexp = glue("midday_complete.csv.gz")))
 
-df_mids <- read_csv(file = pheno_files)
+df_mids <- df2
 
 # filter to just one value at noon:
 df_mid <- df_mids |>
@@ -170,7 +185,7 @@ library(ggimage)
 # set the date to use for these plots (depends on photo set)
 range(df_mid$datetime)
 # here we pick 7 days prior to the last photo
-photo_date_location <- max(df_mid$datetime)-days(9)
+photo_date_location <- max(df_mid$datetime)-days(35)
 
 # or specify manually:
 #photo_date_location <- "2024-08-21 00:00:00"
@@ -246,3 +261,103 @@ ggplot() +
 
 ggsave(glue("{exif_path}/figs/gbR_{site_id}_{mask_type}_midday.png"), width = 10, height = 8, dpi = 300, bg = "white")
 
+# Additional Plots --------------------------------------------------------
+
+# exposure by temp? see if these peaks correspond to snow?
+ggplot() +
+  geom_line(data=df_mids, aes(x=datetime, y=exposure), color="gray") +
+  geom_point(data=df_mids, aes(x=datetime, y=exposure, fill=ambient_temp_C), size=4, pch=21, color=alpha("white",0.1)) + scale_fill_viridis_c(option="A") +
+  scale_x_datetime(date_breaks = "1 months", date_labels = "%b")+
+  theme_minimal()
+
+# infrared?
+ggplot() +
+  geom_line(data=df_mids, aes(x=datetime, y=ambient_infrared), color="gray") +
+  geom_point(data=df_mids, aes(x=datetime, y=ambient_infrared, fill=ambient_temp_C), size=3, pch=21, color=alpha("white",0.1)) + scale_fill_viridis_c(option="A") +
+  scale_x_datetime(date_breaks = "1 months", date_labels = "%b")+
+  theme_minimal()
+
+# track battery voltage over time?
+ggplot() +
+  geom_line(data=df_mids, aes(x=datetime, y=battery_voltage), color="gray") +
+  geom_point(data=df_mids, aes(x=datetime, y=battery_voltage, fill=ambient_temp_C), size=3, pch=21, color=alpha("white",0.1)) + scale_fill_viridis_c(option="A") +
+  scale_x_datetime(date_breaks = "1 months", date_labels = "%b")+
+  theme_minimal()
+
+ggplot() +
+  geom_line(data=df_mids, aes(x=datetime, y=battery_voltage_avg), color="gray") +
+  geom_point(data=df_mids, aes(x=datetime, y=battery_voltage_avg, fill=ambient_temp_C), size=3, pch=21, color=alpha("white",0.1)) + scale_fill_viridis_c(option="A") +
+  scale_x_datetime(date_breaks = "1 months", date_labels = "%b")+
+  theme_minimal()
+
+# GRVI
+ggplot() +
+  geom_point(data=df_mids, aes(x=GRVI, y=battery_voltage_avg, fill=ambient_temp_C), size=3, pch=21, color=alpha("white",0.1)) + scale_fill_viridis_c(option="A") +
+  theme_minimal()
+
+ggplot() +
+  geom_point(data=df_mids, aes(x=GRVI, y=ambient_infrared, fill=ambient_temp_C), size=3, pch=21, color=alpha("white",0.1)) + scale_fill_viridis_c(option="A") +
+  theme_minimal()
+
+# GCC STD
+ggplot() +
+  geom_point(data=df_mids, aes(x=datetime, y=gcc.std, fill=ambient_temp_C), size=3, pch=21, color=alpha("white",0.1)) +
+  scale_fill_viridis_c(option="A") +
+  theme_minimal()
+
+# grR
+ggplot() +
+  geom_line(data=df_mids, aes(x=datetime, y=grR), color="gray") +
+  geom_point(data=df_mids, aes(x=datetime, y=grR, fill=ambient_temp_C), size=3, pch=21, color=alpha("white",0.1)) +
+  scale_fill_viridis_c(option="A") +
+  scale_x_datetime(date_breaks = "1 months", date_labels = "%b")+
+  theme_minimal()
+
+# rbR
+ggplot() +
+  geom_line(data=df_mids, aes(x=datetime, y=rbR), color="gray") +
+  geom_point(data=df_mids, aes(x=datetime, y=rbR, fill=ambient_temp_C), size=3, pch=21, color=alpha("white",0.1)) +
+  scale_fill_viridis_c(option="A") +
+  scale_x_datetime(date_breaks = "1 months", date_labels = "%b")+
+  theme_minimal()
+
+# gbR
+ggplot() +
+  geom_line(data=df_mids, aes(x=datetime, y=gbR), color="gray") +
+  geom_point(data=df_mids, aes(x=datetime, y=gbR, fill=ambient_temp_C), size=3, pch=21, color=alpha("white",0.1)) +
+  scale_fill_viridis_c(option="A") +
+  scale_x_datetime(date_breaks = "1 months", date_labels = "%b")+
+  theme_minimal()
+
+# GRVI
+ggplot() +
+  geom_line(data=df_mids, aes(x=datetime, y=GRVI), color="gray") +
+  geom_point(data=df_mids, aes(x=datetime, y=GRVI, fill=ambient_temp_C), size=3, pch=21, color=alpha("white",0.1)) +
+  scale_fill_viridis_c(option="A") +
+  scale_x_datetime(date_breaks = "1 months", date_labels = "%b")+
+  theme_minimal()
+
+# exG
+ggplot() +
+  geom_line(data=df_mids, aes(x=datetime, y=exG), color="gray") +
+  geom_point(data=df_mids, aes(x=datetime, y=exG, fill=ambient_temp_C), size=3, pch=21, color=alpha("white",0.1)) +
+  scale_fill_viridis_c(option="A") +
+  scale_x_datetime(date_breaks = "1 months", date_labels = "%b")+
+  theme_minimal()
+
+
+# gbR-rbR
+ggplot() +
+  geom_line(data=df_mids, aes(x=datetime, y=gbR-rbR), color="gray") +
+  geom_point(data=df_mids, aes(x=datetime, y=gbR-rbR, fill=ambient_temp_C), size=3, pch=21, color=alpha("white",0.1)) +
+  scale_fill_viridis_c(option="A") +
+  scale_x_datetime(date_breaks = "1 months", date_labels = "%b")+
+  theme_minimal()
+
+# gbR-grR (good for snow?)
+ggplot() +
+  geom_line(data=df_mids, aes(x=datetime, y=gbR-grR), color="gray") +
+  geom_point(data=df_mids, aes(x=datetime, y=gbR-grR, fill=ambient_temp_C), size=3, pch=21, color=alpha("white",0.1)) +
+  scale_fill_viridis_c(option="A") +
+  scale_x_datetime(date_breaks = "1 months", date_labels = "%b")+
+  theme_minimal()

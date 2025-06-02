@@ -5,15 +5,6 @@
 ## Additionally, code uses exiftools to extract photo attributes for future use
 # write these data to csv.gz (info like exposure, photo size, etc)
 
-# Libraries ---------------------------------------------------------------
-
-library(tidyverse) # various naming/tidying functions
-library(glue) # pasting names together
-library(janitor) # cleaning filenames
-library(fs) # file/directory metadata
-library(exiftoolr) # getting metadata from photos (REQUIRES A LOCAL ExifTool install)
-library(digest) # for unique hash ID
-
 # Getting Exiftools Installed ---------------------------------------------
 
 ## this process only needs to be done ONCE per R installation (version)
@@ -51,6 +42,17 @@ library(digest) # for unique hash ID
 
 #exif_version()
 
+
+
+# Libraries ---------------------------------------------------------------
+
+library(tidyverse) # various naming/tidying functions
+library(glue) # pasting names together
+library(janitor) # cleaning filenames
+library(fs) # file/directory metadata
+library(exiftoolr) # getting metadata from photos (REQUIRES A LOCAL ExifTool install)
+library(digest) # for unique hash ID
+
 # Set Paths ---------------------------------------------------------------
 
 # CHANGE/CHECK THESE!
@@ -72,10 +74,10 @@ photo_directory # double check this is correct!
 # DIRECTORIES ARE IN ALL CAPS, filenames are lowercase
 
 ## TIMELAPSE PROJECT
-    ## ----> SITE_ID
-        ## ----> YYYYMMDD
-            ## ----> photo_filename_0001.jpg
-            ## ----> photo_filename_0002.jpg
+## ----> SITE_ID
+## -------> YYYYMMDD (*date of last photo check*)
+## ----------> photo_filename_0001.jpg
+## ----------> photo_filename_0002.jpg
 
 # Get Photo File List -----------------------------------------------------
 
@@ -110,8 +112,7 @@ system.time(
                       "ambient_infrared", "ambient_light",
                       "serial_number", "image_size", "image_width", "image_height",
                       "battery_voltage_avg","battery_voltage_avg"))) |>
-      rename(file_path=directory, datetime = create_date, exposure=exposure_time,
-             ambient_temp_C=ambient_temperature) |>
+      rename(file_path=directory, datetime = create_date, exposure=exposure_time) |>
       mutate(
         file_folder = glue("{path_file(file_path)}"),
         full_path = glue("{file_path}/{file_name}"),

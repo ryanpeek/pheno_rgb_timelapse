@@ -36,13 +36,34 @@ photo_date_dir <- basename(photo_directory)
 #photo_date_dir <- "20240604" # can specify manually if necessary
 exif_path <- fs::path_dir(photo_directory)
 
-# read in the exif metadata (run via 02_extract_metadata)
-photo_exif <- read_csv(glue("{exif_path}/pheno_exif_{site_id}_{photo_date_dir}.csv.gz"))
+# read in the "complete" option if it exists for exif metadata
+if(file_exists(glue("{exif_path}/pheno_exif_{site_id}_complete.csv.gz"))){
+  print("Using 'complete' list of photos")
+  photo_exif <- read_csv(glue("{exif_path}/pheno_exif_{site_id}_complete.csv.gz"))
+} else({
+  print("Using local photo directory")
+  photo_exif <- read_csv(glue("{exif_path}/pheno_exif_{site_id}_{photo_date_dir}.csv.gz"))
+})
+
+# Filter to Period or Time ------------------------------------------------
+
+# make a "noon" only set of data
+filt_time <- "12:00:00"
+
+photo_exif_noon <- photo_exif |>
+  # this filters to only photos at noon
+  filter(hms(glue("{filt_time}"))==hms::as_hms(datetime))
 
 # Select Photo for Drawing ROI -------------------------------------------------------
 
+## IMPORTANT NOTE: RSTUDIO HAS A GLITCH THAT CAUSES ORTHOGONAL SHIFT IN
+## DRAWN POLYGON. TO AVOID TRY ONE OF FOLLOWING:
+# - use View > Actual Size
+# - use a X11 window: x11() then plotRGB, then draw
+# - use a quartz window (on MaxOSX)
+
 # get a test image, change number for different image
-img <- terra::rast(glue("{photo_directory}/{photo_exif$pheno_name[11]}"))
+img <- terra::rast(glue("{exif_path}/{photo_exif_noon$file_folder[3]}/{photo_exif_noon$pheno_name[3]}"))
 
 # flip?
 img <- terra::flip(img)
@@ -73,6 +94,7 @@ RGB(img) <- 1:3
 # TN tundra (includes sedges, lichens, mosses, etc.)
 # WT wetland
 # WA water
+# SN snow
 
 # Create NEW mask type and number
 ## First number is for photo set (specific to download batch)
@@ -115,17 +137,11 @@ plot(r) # preview mask plot
 
 fs::dir_create(path = glue("{exif_path}/ROI/"))
 terra::writeRaster(r, filename = glue("{exif_path}/ROI/{site_id}_{mask_type}.tif"), overwrite=TRUE)
-terra::writeRaster(r, filename = glue("ROI/{site_id}_{mask_type}.tif"), overwrite=TRUE)
 
 # Make a Plot -------------------------------------------------------------
 
 # make sure to save and write out (only once)
 png(filename = glue("{exif_path}/ROI/{site_id}_{mask_type}_roi_masked.png"), bg = "transparent")
-plotRGB(img)
-plot(r, col=c(alpha("white", 0), alpha("yellow",0.8)), legend=FALSE, axes=FALSE, add=TRUE)
-dev.off()
-
-png(filename = glue("ROI/{site_id}_{mask_type}_roi_masked.png"), bg = "transparent")
 plotRGB(img)
 plot(r, col=c(alpha("white",0), alpha("yellow",0.8)), legend=FALSE, axes=FALSE, add=TRUE)
 dev.off()
