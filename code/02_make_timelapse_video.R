@@ -14,7 +14,7 @@ library(beepr) # to know when things are done
 
 # Set Parameters ----------------------------------------------------------
 
-site_id <- "COLE1" # location
+site_id <- "MABE4" # location
 
 # Full path to folder where photos are located
 # this function helps select the folder and ensures there are images in the folder to use
@@ -66,6 +66,7 @@ filt_time <- "12:00:00"
 photo_exif_period <- photo_exif |>
   # this filters to only photos at noon
   filter(hms(glue("{filt_time}"))==hms::as_hms(datetime))
+range(photo_exif_period$datetime)
 
 # or filter to specific time period:
 range(photo_exif$datetime)
@@ -80,6 +81,7 @@ time_end <- "13:00:00"
 photo_exif_period <- photo_exif |>
   filter(as_date(datetime) >= date_start & as_date(datetime) <= date_end) |>
   filter(hms::as_hms(datetime) >= hms(time_start) & hms::as_hms(datetime) <= hms(time_end))
+
 range(photo_exif_period$datetime)
 
 # Get photo composite ----------------------------------------------------
@@ -107,7 +109,6 @@ framerate_sel <- 20 # default 12, try 20 for smoother video but need more photos
 
 # makes a high quality video of complete period
 image_write_video(image = photo_stack_complete, path = glue("{exif_path}/videos/{site_id}_{vid_name}_video.mp4"), framerate =  framerate_sel)
-
 
 # makes a high quality video (try framerate 12, 20, or 30)
 image_write_video(image = photo_stack, path = glue("{exif_path}/videos/{site_id}_{photo_date_dir}_video_20.mp4"), framerate =  20)
